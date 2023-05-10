@@ -77,6 +77,9 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\Down_arrow.png" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\White_dot.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PreBuildEvent>

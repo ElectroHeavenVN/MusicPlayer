@@ -1,4 +1,5 @@
-﻿using NAudio.Wave;
+﻿using NAudio.Utils;
+using NAudio.Wave;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -24,21 +25,20 @@ namespace MusicPlayer
 
         static byte[] defaultAlbumArtworkImage;
 
-        internal Tag tag;
-
         internal static List<Music> listSongs = new List<Music>();
 
         internal static int indexPlaying = -1;
 
         static bool m_lockEvents;
 
+        internal TagLib.File file;
+
         internal Music(string path)
         {
             if (Path.GetExtension(path).ToLower() != ".wav" && Path.GetExtension(path).ToLower() !=  ".mp3" && Path.GetExtension(path).ToLower() !=  ".aiff" && Path.GetExtension(path).ToLower() !=  ".aif")
                 throw new Exception("Invalid file type: " + Path.GetExtension(path));
             filePath = path;
-            TagLib.File audioFile = TagLib.File.Create(filePath);
-            tag = audioFile.Tag;
+            file = TagLib.File.Create(filePath);
         }
 
         static Music()
@@ -79,7 +79,7 @@ namespace MusicPlayer
         internal Image getAlbumArtwork(int size = 150/*, bool isCropToCircle = true*/, bool roundCorner = true)
         {
             size *= mGraphics.zoomLevel;
-            if (tag.Pictures.Length == 0)
+            if (file.Tag.Pictures.Length == 0)
                 foreach (Image albumArtwork in defaultAlbumArtworks)
                 {
                     if (albumArtwork.w == size && albumArtwork.h == size)
@@ -92,10 +92,10 @@ namespace MusicPlayer
                         return albumArtwork;
                 }
             Image image = new Image();
-            if (tag.Pictures.Length == 0)
+            if (file.Tag.Pictures.Length == 0)
                 image.texture.LoadImage(defaultAlbumArtworkImage);
             else 
-                image.texture.LoadImage(tag.Pictures[0].Data.Data);
+                image.texture.LoadImage(file.Tag.Pictures[0].Data.Data);
             image.texture = Utils.CropToSquare(image.texture, size);
             //if (isCropToCircle)
             //    image.texture = Utils.CropFromSquareToCircle(image.texture, mGraphics.zoomLevel);
@@ -108,11 +108,13 @@ namespace MusicPlayer
             image.texture.Apply();
             image.w = size;
             image.h = size;
-            if (tag.Pictures.Length == 0)
+            if (file.Tag.Pictures.Length == 0)
                 defaultAlbumArtworks.Add(image);
             else
                 albumArtworks.Add(image);
             return image;
         }
+
+        internal TimeSpan GetPosition() => output.GetPositionTimeSpan();
     }
 }

@@ -1,9 +1,12 @@
-﻿using Mod.Graphics;
+﻿using Mod;
+using Mod.Graphics;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 
 namespace MusicPlayer
 {
@@ -186,6 +189,26 @@ namespace MusicPlayer
             }
 
             return texture;
+        }
+
+        internal static string toString(this TimeSpan timeSpan)
+        {
+            string result = $"{timeSpan.Minutes:00}:{timeSpan.Seconds:00}";
+            if ((int)timeSpan.TotalHours > 0)
+                result = $"{(int)timeSpan.TotalHours:00}:" + result;
+            return result;
+        }
+
+        internal static string TrimUntilFit(string str, GUIStyle style, int width)
+        {
+            int originalWidth = (int)(Utilities.getWidth(style, str) / 1.025f);
+            if (originalWidth > width)
+            {
+                while (Utilities.getWidth(style, str + "...") > width)
+                    str = str.Remove(str.Length - 1, 1);
+                str = str.Trim() + "...";
+            }
+            return str;
         }
     }
 }

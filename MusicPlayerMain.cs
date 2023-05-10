@@ -1,6 +1,7 @@
 ﻿using Mod;
 using Mod.CustomPanel;
 using Mod.Graphics;
+using Mod.ModHelper.CommandMod.Chat;
 using NAudio.Wave;
 using System;
 using System.Collections.Generic;
@@ -18,6 +19,7 @@ namespace MusicPlayer
     {
         static readonly int OFFSET_CURRENTLY_PLAYING = GameCanvas.panel.H + 20;
         public static Image downArrow;
+        public static Image whiteDot;
         static int offsetTitle;
         static int offsetDesc;
         static long lastTimeResetTitle;
@@ -38,7 +40,7 @@ namespace MusicPlayer
             stream.Read(data, 0, (int)stream.Length);
             downArrow = new Image();
             downArrow.texture.LoadImage(data);
-            downArrow.texture = TextureScaler.ScaleTexture(downArrow.texture, 12 * mGraphics.zoomLevel, 12 * mGraphics.zoomLevel);
+            downArrow.texture = TextureScaler.ScaleTexture(downArrow.texture, 8 * mGraphics.zoomLevel, 8 * mGraphics.zoomLevel);
             downArrow.texture.anisoLevel = 0;
             downArrow.texture.filterMode = FilterMode.Point;
             downArrow.texture.mipMapBias = 0f;
@@ -46,6 +48,19 @@ namespace MusicPlayer
             downArrow.texture.Apply();
             downArrow.w = downArrow.texture.width;
             downArrow.h = downArrow.texture.height;
+            stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("MusicPlayer.Resources.White_dot.png");
+            data = new byte[stream.Length];
+            stream.Read(data, 0, (int)stream.Length);
+            whiteDot = new Image();
+            whiteDot.texture.LoadImage(data);
+            whiteDot.texture = TextureScaler.ScaleTexture(whiteDot.texture, 5 * mGraphics.zoomLevel, 5 * mGraphics.zoomLevel);
+            whiteDot.texture.anisoLevel = 0;
+            whiteDot.texture.filterMode = FilterMode.Point;
+            whiteDot.texture.mipMapBias = 0f;
+            whiteDot.texture.wrapMode = TextureWrapMode.Clamp;
+            whiteDot.texture.Apply();
+            whiteDot.w = whiteDot.texture.width;
+            whiteDot.h = whiteDot.texture.height;
         }
 
         public static void OpenMusicPanel()
@@ -157,7 +172,9 @@ namespace MusicPlayer
                             {
                                 while (offsetCurrentlyPlayingPanel > 0)
                                 {
-                                    offsetCurrentlyPlayingPanel -= 5 * mGraphics.zoomLevel;
+                                    offsetCurrentlyPlayingPanel -= 10 * mGraphics.zoomLevel;
+                                    if (offsetCurrentlyPlayingPanel < 0)
+                                        offsetCurrentlyPlayingPanel = 0;
                                     Thread.Sleep(10);
                                 }
                                 //Thread.Sleep(300);
@@ -182,7 +199,7 @@ namespace MusicPlayer
                         {
                             while (offsetCurrentlyPlayingPanel < OFFSET_CURRENTLY_PLAYING)
                             {
-                                offsetCurrentlyPlayingPanel += 5 * mGraphics.zoomLevel;
+                                offsetCurrentlyPlayingPanel += 10 * mGraphics.zoomLevel;
                                 if (offsetCurrentlyPlayingPanel > OFFSET_CURRENTLY_PLAYING)
                                     offsetCurrentlyPlayingPanel = OFFSET_CURRENTLY_PLAYING;
                                 Thread.Sleep(10);
@@ -225,8 +242,8 @@ namespace MusicPlayer
                 Image albumArtwork = Music.listSongs[Music.indexPlaying].getAlbumArtwork(panel.ITEM_HEIGHT - 6, false);
                 g.drawImage(albumArtwork, x + 3, y + 2);
 
-                string caption = Music.listSongs[Music.indexPlaying].tag.Title;
-                string description = string.Join(", ", Music.listSongs[Music.indexPlaying].tag.Artists);
+                string caption = Music.listSongs[Music.indexPlaying].file.Tag.Title;
+                string description = string.Join(", ", Music.listSongs[Music.indexPlaying].file.Tag.Performers);
                 GUIStyle style = new GUIStyle(GUI.skin.label)
                 {
                     alignment = TextAnchor.UpperLeft,
@@ -291,26 +308,67 @@ namespace MusicPlayer
                 return;
             g.setClip(panel.X, panel.Y, panel.W - 1, panel.H);
             g.translate(0, offsetCurrentlyPlayingPanel);
-            //g.setColor(new Color(0.85f, 0.78f, 0.7f));
-            ////g.fillRect(panel.startTabPos - 2, 52, panel.W - 2, 30);
-            //g.fillRect(panel.X, panel.Y + 50, panel.W, panel.H - 50);
-
-            //g.setColor(new Color(0.8f, 0.37f, 0.05f));
-            //g.fillRect(panel.startTabPos - 2, 51, panel.W - 2, 1);
-            //2DO: draw album artwork
-
+            //background
             Image imageBg = Music.listSongs[Music.indexPlaying].getAlbumArtwork(panel.H - 50, false);
             g.drawImage(imageBg, panel.W / 2, panel.Y + 50 + 1, mGraphics.TOP | mGraphics.HCENTER);
-            g.setColor(new Color(0, 0, 0, .7f));
+            g.setColor(new Color(0, 0, 0, .8f));
             g.fillRect(panel.X, panel.Y + 50, panel.W, panel.H - 50);
+            //album artwork
             Image image = Music.listSongs[Music.indexPlaying].getAlbumArtwork(panel.W - 40);
-            CustomGraphics.DrawImage(image, 20 + g.getTranslateX(), 100 + g.getTranslateY(), 0);
+            CustomGraphics.DrawImage(image, 20 + g.getTranslateX(), 60 + g.getTranslateY());
+            //arrow
             getDownArrow(out int downArrowX, out int downArrowY);
             g.drawImage(downArrow, downArrowX, downArrowY);
-            //CustomGraphics.DrawImage(image, 20, 100, angle);
-            //angle += 2 / 3f;
-            //if (angle >= 360f)
-            //    angle = 0f;
+            //progress bar
+            PaintProgressBar(g, panel);
+            //title, artists
+            GUIStyle style = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.UpperCenter,
+                fontSize = 10 * mGraphics.zoomLevel,
+                fontStyle = FontStyle.Bold,
+                //richText = true
+            };
+            style.normal.textColor = Color.white;
+            string caption = Music.listSongs[Music.indexPlaying].file.Tag.Title;
+            string description = string.Join(", ", Music.listSongs[Music.indexPlaying].file.Tag.Performers);
+            g.setClip(10, 215, panel.W - 10 * 2, 50);
+            caption = Utils.TrimUntilFit(caption, style, panel.W - 10 * 2);
+            g.drawString(caption, panel.W / 2 - GameCanvas.w / 2, 215, style);
+            style.fontSize -= mGraphics.zoomLevel * 4;
+            style.normal.textColor = new Color(.6f, .6f, .6f);
+            g.setClip(15, 230, panel.W - 15 * 2, 50);
+            description = Utils.TrimUntilFit(description, style, panel.W - 15 * 2);
+            g.drawString(description, panel.W / 2 - GameCanvas.w / 2, 230, style);
+            //controls (prev, pause, next)
+
+            g.setClip(panel.X, panel.Y, panel.W - 1, panel.H);
+
+        }
+
+        static void PaintProgressBar(mGraphics g, Panel panel)
+        {
+            getProgBar(out int progBarX, out int progBarY, out int progBarW, out int progBarH);
+            g.setColor(new Color(.6f, .6f, .6f, .5f));
+            g.fillRect(progBarX, progBarY, progBarW, progBarH);
+            g.setColor(Color.white);
+            TimeSpan currentPosition = Music.listSongs[Music.indexPlaying].GetPosition();
+            TimeSpan duration = Music.listSongs[Music.indexPlaying].file.Properties.Duration;
+            int width = (int)(progBarW * currentPosition.Ticks / duration.Ticks);
+            g.fillRect(progBarX, progBarY, width, 1);
+            CustomGraphics.DrawImage(whiteDot, (progBarX + width) * mGraphics.zoomLevel - whiteDot.w / 2 + g.getTranslateX(), (progBarY + .5f) * mGraphics.zoomLevel - whiteDot.h / 2 + g.getTranslateY(), 0, false);
+            GUIStyle style = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.UpperLeft,
+                fontSize = 6 * mGraphics.zoomLevel,
+                fontStyle = FontStyle.Bold,
+                //richText = true
+            };
+            style.normal.textColor = Color.white;
+            g.drawString(currentPosition.toString(), progBarX, progBarY + 2, style);
+            style.alignment = TextAnchor.UpperRight;
+            g.drawString(duration.toString(), progBarX + progBarW - GameCanvas.w, progBarY + 2, style);
+
         }
 
         static void paintMusicList(Panel panel, mGraphics g)
@@ -324,8 +382,8 @@ namespace MusicPlayer
             bool isReset = true;
             for (int i = offset; i < Mathf.Clamp(offset + panel.hScroll / panel.ITEM_HEIGHT + 2, 0, Music.listSongs.Count); i++)
             {
-                string caption = Music.listSongs[i].tag.Title;
-                string description = string.Join(", ", Music.listSongs[i].tag.Artists);
+                string caption = Music.listSongs[i].file.Tag.Title;
+                string description = string.Join(", ", Music.listSongs[i].file.Tag.Performers);
                 int x = panel.xScroll;
                 int y = panel.yScroll + i * panel.ITEM_HEIGHT;
                 int width = panel.wScroll;
@@ -353,14 +411,7 @@ namespace MusicPlayer
                 g.fillRect(x, y, width, height);
                 style.normal.textColor = new Color(0f, 0.33f, 0.15f);
                 if (i != panel.selected)
-                {
-                    if (captionWidth > width)
-                    {
-                        while (Utilities.getWidth(style, caption + "...") > width)
-                            caption = caption.Remove(caption.Length - 1, 1);
-                        caption += "...";
-                    }
-                }
+                    caption = Utils.TrimUntilFit(caption, style, width);
                 if (i == panel.selected && captionWidth > width)
                 {
                     g.drawString(caption, x + 4 - offsetTitle, y, style);
@@ -372,14 +423,7 @@ namespace MusicPlayer
                 style.normal.textColor = new Color(0f, 0.5f, 1f);
                 style.fontSize = 7 * mGraphics.zoomLevel;
                 if (i != panel.selected)
-                {
-                    if (descriptionWidth > width)
-                    {
-                        while (Utilities.getWidth(style, description + "...") > width)
-                            description = description.Remove(description.Length - 1, 1);
-                        description += "...";
-                    }
-                }
+                    description = Utils.TrimUntilFit(description, style, width);
                 if (i == panel.selected && descriptionWidth > width)
                 {
                     g.drawString(description, x + 4 - offsetDesc, y + 12, style);
@@ -458,12 +502,20 @@ namespace MusicPlayer
 
         static void getDownArrow(out int downArrowX, out int downArrowY)
         {
-            downArrowX = GameCanvas.panel.X + GameCanvas.panel.W - 15;
-            downArrowY = GameCanvas.panel.Y + 50;
+            downArrowX = GameCanvas.panel.X + GameCanvas.panel.W / 2 - downArrow.w / 4;
+            downArrowY = GameCanvas.panel.Y + 51;
         }
 
-        static void Test()
+        static void getProgBar(out int progBarX, out int progBarY, out int progBarW, out int progBarH)
         {
+            progBarX = 20;
+            progBarY = 205;
+            progBarW = GameCanvas.panel.W - progBarX * 2;
+            progBarH = 1;
+        }
+
+        //static void Test()
+        //{
             //AudioFile audioFile1 = new AudioFile(@"");
             //image = new Image();
             //image.texture.LoadImage(audioFile1.Tag.Pictures[0].Data.Data);
@@ -491,6 +543,6 @@ namespace MusicPlayer
             //    })
             //    { IsBackground = true }.Start();
             //}
-        }
+        //}
     }
 }
