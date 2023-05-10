@@ -76,7 +76,7 @@ namespace MusicPlayer
 
         internal void SetVolume(float volume) => output.Volume = volume;
 
-        internal Image getAlbumArtwork(int size = 150, bool isCropToCircle = true)
+        internal Image getAlbumArtwork(int size = 150/*, bool isCropToCircle = true*/, bool roundCorner = true)
         {
             size *= mGraphics.zoomLevel;
             if (tag.Pictures.Length == 0)
@@ -97,8 +97,10 @@ namespace MusicPlayer
             else 
                 image.texture.LoadImage(tag.Pictures[0].Data.Data);
             image.texture = Utils.CropToSquare(image.texture, size);
-            if (isCropToCircle)
-                image.texture = Utils.CropFromSquareToCircle(image.texture);
+            //if (isCropToCircle)
+            //    image.texture = Utils.CropFromSquareToCircle(image.texture, mGraphics.zoomLevel);
+            if (roundCorner)
+                image.texture = Utils.RoundCorner(image.texture, 10 * mGraphics.zoomLevel);
             image.texture.anisoLevel = 0;
             image.texture.filterMode = FilterMode.Point;
             image.texture.mipMapBias = 0f;

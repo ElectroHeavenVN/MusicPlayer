@@ -1,18 +1,23 @@
 ﻿using Mod;
 using Mod.CustomPanel;
+using Mod.Graphics;
 using NAudio.Wave;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
 using System.Threading;
 using System.Windows.Forms;
 using TagLib.Mpeg;
 using UnityEngine;
+using UnityEngine.SocialPlatforms;
 
 namespace MusicPlayer
 {
     internal class MusicPlayerMain
     {
-        public static Image image;
+        static readonly int OFFSET_CURRENTLY_PLAYING = GameCanvas.panel.H + 20;
+        public static Image downArrow;
         static int offsetTitle;
         static int offsetDesc;
         static long lastTimeResetTitle;
@@ -22,7 +27,26 @@ namespace MusicPlayer
         static long lastTimeResetTitlePlaying;
         static long lastTimeResetDescPlaying;
         static int lastSelectedIndex;
-        static bool isShowCurrentlyPlayingPanel;
+
+        static int offsetCurrentlyPlayingPanel = OFFSET_CURRENTLY_PLAYING;
+        //static float angle;
+
+        static MusicPlayerMain()
+        {
+            Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("MusicPlayer.Resources.Down_arrow.png");
+            byte[] data = new byte[stream.Length];
+            stream.Read(data, 0, (int)stream.Length);
+            downArrow = new Image();
+            downArrow.texture.LoadImage(data);
+            downArrow.texture = TextureScaler.ScaleTexture(downArrow.texture, 12 * mGraphics.zoomLevel, 12 * mGraphics.zoomLevel);
+            downArrow.texture.anisoLevel = 0;
+            downArrow.texture.filterMode = FilterMode.Point;
+            downArrow.texture.mipMapBias = 0f;
+            downArrow.texture.wrapMode = TextureWrapMode.Clamp;
+            downArrow.texture.Apply();
+            downArrow.w = downArrow.texture.width;
+            downArrow.h = downArrow.texture.height;
+        }
 
         public static void OpenMusicPanel()
         {
@@ -58,7 +82,7 @@ namespace MusicPlayer
             //panel.currentTabName = panel.tabName[CustomPanelMenu.TYPE_CUSTOM_PANEL_MENU];
             CustomPanelMenu.show(setTabMusicPlayerPanel, doFireMusicPlayerPanel, null, paintMusicPlayerPanel);
             GameCanvas.panel.currentTabIndex = 0;
-            isShowCurrentlyPlayingPanel = false;
+            offsetCurrentlyPlayingPanel = OFFSET_CURRENTLY_PLAYING;  
         }
 
         public static void setTabMusicPlayerPanel(Panel panel)
@@ -68,7 +92,7 @@ namespace MusicPlayer
 
         public static void doFireMusicPlayerPanel(Panel panel)
         {
-            if (!isShowCurrentlyPlayingPanel)
+            if (offsetCurrentlyPlayingPanel == OFFSET_CURRENTLY_PLAYING)
             {
                 if (panel.currentTabIndex == 0)
                 {
@@ -98,33 +122,27 @@ namespace MusicPlayer
             g.setColor(new Color(0.85f, 0.78f, 0.7f));
             g.fillRect(panel.xScroll, panel.yScroll, panel.wScroll, panel.hScroll);
             g.translate(0, -panel.cmy);
-            if (!isShowCurrentlyPlayingPanel)
-            {
-                if (panel.currentTabIndex == 0)
-                    paintMusicList(panel, g);
-                else if (panel.currentTabIndex == 1)
-                    ;
-                else if (panel.currentTabIndex == 2)
-                    ;
-                else if (panel.currentTabIndex == 3)
-                    ;
-                else if (panel.currentTabIndex == 4)
-                    ;
-                if (Music.indexPlaying != -1)
-                    paintCurrentlyPlayingSongSmall(panel, g);
-                g.setClip(panel.xScroll, panel.yScroll, panel.wScroll, panel.hScroll);
-                panel.paintScrollArrow(g);
-            }
-            else
-            {
-                paintCurrentlyPlayingSongLarge(panel, g);
-            }
+            if (panel.currentTabIndex == 0)
+                paintMusicList(panel, g);
+            else if (panel.currentTabIndex == 1)
+                ;
+            else if (panel.currentTabIndex == 2)
+                ;
+            else if (panel.currentTabIndex == 3)
+                ;
+            else if (panel.currentTabIndex == 4)
+                ;
+            if (Music.indexPlaying != -1)
+                paintCurrentlyPlayingSongSmall(panel, g);
+            g.setClip(panel.xScroll, panel.yScroll, panel.wScroll, panel.hScroll);
+            panel.paintScrollArrow(g);
+            paintCurrentlyPlayingSongLarge(panel, g);
             GameCanvas.resetTrans(g);
         }
 
         public static void updateTouchPanel()
         {
-            if (!isShowCurrentlyPlayingPanel)
+            if (offsetCurrentlyPlayingPanel == OFFSET_CURRENTLY_PLAYING)
             {
                 if (Music.indexPlaying != -1)
                 {
@@ -137,8 +155,13 @@ namespace MusicPlayer
                         if (GameCanvas.isPointerClick)
                             ThreadPool.QueueUserWorkItem(o =>
                             {
-                                Thread.Sleep(300);
-                                isShowCurrentlyPlayingPanel = true;
+                                while (offsetCurrentlyPlayingPanel > 0)
+                                {
+                                    offsetCurrentlyPlayingPanel -= 5 * mGraphics.zoomLevel;
+                                    Thread.Sleep(10);
+                                }
+                                //Thread.Sleep(300);
+                                //isShowCurrentlyPlayingPanel = true;
                             });
                         GameCanvas.clearAllPointerEvent();
                         return;
@@ -148,6 +171,27 @@ namespace MusicPlayer
             else
             {
                 Panel panel = GameCanvas.panel;
+                getDownArrow(out int downArrowX, out int downArrowY);
+                if (GameCanvas.isPointerHoldIn(downArrowX, downArrowY, downArrow.w, downArrow.h))
+                {
+                    GameCanvas.isPointerJustDown = false;
+                    GameScr.gI().isPointerDowning = false;
+                    if (GameCanvas.isPointerClick)
+                    {
+                        ThreadPool.QueueUserWorkItem(o =>
+                        {
+                            while (offsetCurrentlyPlayingPanel < OFFSET_CURRENTLY_PLAYING)
+                            {
+                                offsetCurrentlyPlayingPanel += 5 * mGraphics.zoomLevel;
+                                if (offsetCurrentlyPlayingPanel > OFFSET_CURRENTLY_PLAYING)
+                                    offsetCurrentlyPlayingPanel = OFFSET_CURRENTLY_PLAYING;
+                                Thread.Sleep(10);
+                            }
+                        });
+                    }
+                    GameCanvas.clearAllPointerEvent();
+                    return;
+                }
                 if (GameCanvas.isPointer(panel.startTabPos - 2, 52, panel.W, 25) || GameCanvas.isPointerHoldIn(panel.xScroll, panel.yScroll, panel.wScroll, panel.hScroll))
                 {
                     //chặn chuyển tab
@@ -243,12 +287,30 @@ namespace MusicPlayer
        
         private static void paintCurrentlyPlayingSongLarge(Panel panel, mGraphics g)
         {
-            g.setClip(panel.X, panel.Y, panel.W, panel.H);
-            g.setColor(new Color(0.85f, 0.78f, 0.7f));
-            g.fillRect(panel.startTabPos - 2, 52, panel.W - 2, 30);
-            g.setColor(new Color(0.8f, 0.37f, 0.05f));
-            g.fillRect(panel.startTabPos - 2, 51, panel.W - 2, 1);
+            if (offsetCurrentlyPlayingPanel == OFFSET_CURRENTLY_PLAYING)
+                return;
+            g.setClip(panel.X, panel.Y, panel.W - 1, panel.H);
+            g.translate(0, offsetCurrentlyPlayingPanel);
+            //g.setColor(new Color(0.85f, 0.78f, 0.7f));
+            ////g.fillRect(panel.startTabPos - 2, 52, panel.W - 2, 30);
+            //g.fillRect(panel.X, panel.Y + 50, panel.W, panel.H - 50);
+
+            //g.setColor(new Color(0.8f, 0.37f, 0.05f));
+            //g.fillRect(panel.startTabPos - 2, 51, panel.W - 2, 1);
             //2DO: draw album artwork
+
+            Image imageBg = Music.listSongs[Music.indexPlaying].getAlbumArtwork(panel.H - 50, false);
+            g.drawImage(imageBg, panel.W / 2, panel.Y + 50 + 1, mGraphics.TOP | mGraphics.HCENTER);
+            g.setColor(new Color(0, 0, 0, .7f));
+            g.fillRect(panel.X, panel.Y + 50, panel.W, panel.H - 50);
+            Image image = Music.listSongs[Music.indexPlaying].getAlbumArtwork(panel.W - 40);
+            CustomGraphics.DrawImage(image, 20 + g.getTranslateX(), 100 + g.getTranslateY(), 0);
+            getDownArrow(out int downArrowX, out int downArrowY);
+            g.drawImage(downArrow, downArrowX, downArrowY);
+            //CustomGraphics.DrawImage(image, 20, 100, angle);
+            //angle += 2 / 3f;
+            //if (angle >= 360f)
+            //    angle = 0f;
         }
 
         static void paintMusicList(Panel panel, mGraphics g)
@@ -357,12 +419,12 @@ namespace MusicPlayer
         internal static void onPanelHide(Panel instance)
         {
             if (instance == GameCanvas.panel)
-                isShowCurrentlyPlayingPanel = false;
+                offsetCurrentlyPlayingPanel = OFFSET_CURRENTLY_PLAYING;
         }
 
         internal static void onUpdateKeyPanel(Panel instance)
         {
-            if (instance == GameCanvas.panel && isShowCurrentlyPlayingPanel)
+            if (instance == GameCanvas.panel && offsetCurrentlyPlayingPanel == 0 && instance.type == CustomPanelMenu.TYPE_CUSTOM_PANEL_MENU)
             {
                 //GameCanvas.keyAsciiPress = 0;
                 //GameCanvas.clearKeyHold();
@@ -394,35 +456,41 @@ namespace MusicPlayer
             h = panel.ITEM_HEIGHT - 2;
         }
 
+        static void getDownArrow(out int downArrowX, out int downArrowY)
+        {
+            downArrowX = GameCanvas.panel.X + GameCanvas.panel.W - 15;
+            downArrowY = GameCanvas.panel.Y + 50;
+        }
+
         static void Test()
         {
-            AudioFile audioFile1 = new AudioFile(@"");
-            image = new Image();
-            image.texture.LoadImage(audioFile1.Tag.Pictures[0].Data.Data);
-            image.texture = Utils.CropFromSquareToCircle(Utils.CropToSquare(image.texture, 300));
-            image.texture.anisoLevel = 0;
-            image.texture.filterMode = FilterMode.Point;
-            image.texture.mipMapBias = 0f;
-            image.texture.wrapMode = TextureWrapMode.Clamp;
-            image.texture.Apply();
-            image.w = image.texture.width;
-            image.h = image.texture.height;
-            if (true)
-            {
-                new Thread(delegate ()
-                {
-                    using (var audioFile = new AudioFileReader(@""))
-                    using (var outputDevice = new WaveOutEvent())
-                    {
-                        outputDevice.Init(audioFile);
-                        outputDevice.Volume = .5f;
-                        outputDevice.Play();
-                        while (outputDevice.PlaybackState == PlaybackState.Playing)
-                            Thread.Sleep(1000);
-                    }
-                })
-                { IsBackground = true }.Start();
-            }
+            //AudioFile audioFile1 = new AudioFile(@"");
+            //image = new Image();
+            //image.texture.LoadImage(audioFile1.Tag.Pictures[0].Data.Data);
+            //image.texture = Utils.CropFromSquareToCircle(Utils.CropToSquare(image.texture, 300));
+            //image.texture.anisoLevel = 0;
+            //image.texture.filterMode = FilterMode.Point;
+            //image.texture.mipMapBias = 0f;
+            //image.texture.wrapMode = TextureWrapMode.Clamp;
+            //image.texture.Apply();
+            //image.w = image.texture.width;
+            //image.h = image.texture.height;
+            //if (true)
+            //{
+            //    new Thread(delegate ()
+            //    {
+            //        using (var audioFile = new AudioFileReader(@""))
+            //        using (var outputDevice = new WaveOutEvent())
+            //        {
+            //            outputDevice.Init(audioFile);
+            //            outputDevice.Volume = .5f;
+            //            outputDevice.Play();
+            //            while (outputDevice.PlaybackState == PlaybackState.Playing)
+            //                Thread.Sleep(1000);
+            //        }
+            //    })
+            //    { IsBackground = true }.Start();
+            //}
         }
     }
 }

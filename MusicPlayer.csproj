@@ -74,6 +74,9 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\Default_album_artwork.png" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Down_arrow.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PreBuildEvent>
