@@ -521,13 +521,23 @@ namespace MusicPlayer
 
         internal static void onUpdateKeyPanel(Panel instance)
         {
-            if (instance == GameCanvas.panel && offsetCurrentlyPlayingPanel == 0 && instance.type == CustomPanelMenu.TYPE_CUSTOM_PANEL_MENU)
+            if (instance == GameCanvas.panel && instance.type == CustomPanelMenu.TYPE_CUSTOM_PANEL_MENU)
             {
-                //GameCanvas.keyAsciiPress = 0;
-                //GameCanvas.clearKeyHold();
-                //GameCanvas.clearKeyPressed();
-                GameCanvas.keyPressed[(!Main.isPC) ? 6 : 24] = false;
-                GameCanvas.keyPressed[(!Main.isPC) ? 4 : 23] = false;
+                if (offsetCurrentlyPlayingPanel == 0)
+                {
+                    //GameCanvas.keyAsciiPress = 0;
+                    //GameCanvas.clearKeyHold();
+                    //GameCanvas.clearKeyPressed();
+                    GameCanvas.keyPressed[(!Main.isPC) ? 6 : 24] = false;
+                    GameCanvas.keyPressed[(!Main.isPC) ? 4 : 23] = false;
+                    if (GameCanvas.keyAsciiPress == ' ')  //space
+                    {
+                        Music.PauseOrPlay();
+                        GameCanvas.clearKeyHold();
+                        GameCanvas.clearKeyPressed();
+                        GameCanvas.keyAsciiPress = 0;
+                    }
+                }
             }
         }
 
