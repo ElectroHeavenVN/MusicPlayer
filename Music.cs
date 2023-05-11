@@ -117,6 +117,8 @@ namespace MusicPlayer
             Play(indexPlaying);
         }
 
+        internal static Music currentlyPlaying => listSongs[indexPlaying];
+
         internal static PlaybackState state => output.PlaybackState;
 
         internal void SetVolume(float volume) => output.Volume = volume;
@@ -165,5 +167,7 @@ namespace MusicPlayer
             get => musicStream.CurrentTime;
             set => musicStream.CurrentTime = value;
         }
+
+        internal TimeSpan Length => file.Properties.Duration;
     }
 }

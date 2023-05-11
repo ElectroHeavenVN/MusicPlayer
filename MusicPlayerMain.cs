@@ -101,7 +101,7 @@ namespace MusicPlayer
                     {
                         Music.indexPlaying = panel.selected;
                         ResetOffsetCurrentlyPlaying();
-                        Music.listSongs[Music.indexPlaying].SetVolume(.3f);
+                        Music.currentlyPlaying.SetVolume(.3f);
                         Music.Play(Music.indexPlaying);
                     }
                 }
@@ -142,7 +142,7 @@ namespace MusicPlayer
 
         public static void updateTouchPanel()
         {
-            if (offsetCurrentlyPlayingPanel == OFFSET_CURRENTLY_PLAYING)
+            if (offsetCurrentlyPlayingPanel == OFFSET_CURRENTLY_PLAYING)    //Menu
             {
                 if (Music.indexPlaying != -1)
                 {
@@ -170,12 +170,13 @@ namespace MusicPlayer
                     }
                 }
             }
-            else
+            else   //Hiện đang phát
             {
                 Panel panel = GameCanvas.panel;
                 getDownArrow(out int downArrowX, out int downArrowY);
                 getControlButtons(out int playPauseX, out int playPauseY, out int prevX, out int prevY, out int nextX, out int nextY);
-                if (GameCanvas.isPointerHoldIn(downArrowX, downArrowY, downArrow.w / mGraphics.zoomLevel, downArrow.h / mGraphics.zoomLevel))
+                getProgBar(out int progBarX, out int progBarY, out int progBarW, out int progBarH);
+                if (GameCanvas.isPointerHoldIn(downArrowX, downArrowY, downArrow.w / mGraphics.zoomLevel, downArrow.h / mGraphics.zoomLevel))   //Ẩn hiện đang phát
                 {
                     GameCanvas.isPointerJustDown = false;
                     GameScr.gI().isPointerDowning = false;
@@ -195,7 +196,7 @@ namespace MusicPlayer
                     GameCanvas.clearAllPointerEvent();
                     return;
                 }
-                else if (GameCanvas.isPointerHoldIn(prevX, prevY, previous.w / mGraphics.zoomLevel, previous.h / mGraphics.zoomLevel))
+                else if (GameCanvas.isPointerHoldIn(prevX, prevY, previous.w / mGraphics.zoomLevel, previous.h / mGraphics.zoomLevel))  //prev
                 {
                     GameCanvas.isPointerJustDown = false;
                     GameScr.gI().isPointerDowning = false;
@@ -206,7 +207,7 @@ namespace MusicPlayer
                     GameCanvas.clearAllPointerEvent();
                     return;
                 }
-                else if (GameCanvas.isPointerHoldIn(playPauseX, playPauseY, play.w / mGraphics.zoomLevel, play.h / mGraphics.zoomLevel))
+                else if (GameCanvas.isPointerHoldIn(playPauseX, playPauseY, play.w / mGraphics.zoomLevel, play.h / mGraphics.zoomLevel))    //play/pause
                 {
                     GameCanvas.isPointerJustDown = false;
                     GameScr.gI().isPointerDowning = false;
@@ -217,7 +218,7 @@ namespace MusicPlayer
                     GameCanvas.clearAllPointerEvent();
                     return;
                 }
-                else if (GameCanvas.isPointerHoldIn(nextX, nextY, next.w / mGraphics.zoomLevel, next.h / mGraphics.zoomLevel))
+                else if (GameCanvas.isPointerHoldIn(nextX, nextY, next.w / mGraphics.zoomLevel, next.h / mGraphics.zoomLevel))  //next
                 {
                     GameCanvas.isPointerJustDown = false;
                     GameScr.gI().isPointerDowning = false;
@@ -228,9 +229,25 @@ namespace MusicPlayer
                     GameCanvas.clearAllPointerEvent();
                     return;
                 }
-                else if (GameCanvas.isPointer(panel.startTabPos - 2, 52, panel.W, 25) || GameCanvas.isPointerHoldIn(panel.xScroll, panel.yScroll, panel.wScroll, panel.hScroll))
+                else if (GameCanvas.isMouseFocus(0, progBarY - 2, panel.W, progBarH + 4))    //Tua   
                 {
-                    //chặn chuyển tab
+                    if (GameCanvas.isPointerJustRelease)
+                    {
+                        GameCanvas.isPointerJustDown = false;
+                        GameScr.gI().isPointerDowning = false;
+                        //if (GameCanvas.isPointerClick)
+                        //{
+                        Music.currentlyPlaying.Position = TimeSpan.FromTicks(Music.currentlyPlaying.Length.Ticks * (GameCanvas.pxMouse - progBarX) / progBarW);
+                        if (Music.currentlyPlaying.Position == Music.currentlyPlaying.Length)
+                            Music.Next();
+                        //}
+                        GameCanvas.clearAllPointerEvent();
+                        return;
+                    }
+
+                }
+                else if (GameCanvas.isPointer(panel.startTabPos - 2, 52, panel.W, 25) || GameCanvas.isPointerHoldIn(panel.xScroll, panel.yScroll, panel.wScroll, panel.hScroll))    //chặn chuyển tab
+                {
                     GameCanvas.isPointerJustDown = false;
                     GameScr.gI().isPointerDowning = false;
                     if (GameCanvas.isPointerClick)
@@ -240,6 +257,7 @@ namespace MusicPlayer
                     GameCanvas.clearAllPointerEvent();
                     return;
                 }
+
             }
         }
 
@@ -258,11 +276,11 @@ namespace MusicPlayer
 
             if (Music.indexPlaying != -1)
             {
-                Image albumArtwork = Music.listSongs[Music.indexPlaying].getAlbumArtwork(panel.ITEM_HEIGHT - 6, false);
+                Image albumArtwork = Music.currentlyPlaying.getAlbumArtwork(panel.ITEM_HEIGHT - 6, false);
                 g.drawImage(albumArtwork, x + 3, y + 2);
 
-                string caption = Music.listSongs[Music.indexPlaying].file.Tag.Title;
-                string description = string.Join(", ", Music.listSongs[Music.indexPlaying].file.Tag.Performers);
+                string caption = Music.currentlyPlaying.file.Tag.Title;
+                string description = string.Join(", ", Music.currentlyPlaying.file.Tag.Performers);
                 GUIStyle style = new GUIStyle(GUI.skin.label)
                 {
                     alignment = TextAnchor.UpperLeft,
@@ -321,19 +339,19 @@ namespace MusicPlayer
                 ResetOffsetCurrentlyPlaying();
         }
        
-        private static void paintCurrentlyPlayingSongLarge(Panel panel, mGraphics g)
+        static void paintCurrentlyPlayingSongLarge(Panel panel, mGraphics g)
         {
             if (offsetCurrentlyPlayingPanel == OFFSET_CURRENTLY_PLAYING)
                 return;
             g.setClip(panel.X, panel.Y, panel.W - 1, panel.H);
             g.translate(0, offsetCurrentlyPlayingPanel);
             //background
-            Image imageBg = Music.listSongs[Music.indexPlaying].getAlbumArtwork(panel.H - 50, false);
+            Image imageBg = Music.currentlyPlaying.getAlbumArtwork(panel.H - 50, false);
             g.drawImage(imageBg, panel.W / 2, panel.Y + 50 + 1, mGraphics.TOP | mGraphics.HCENTER);
             g.setColor(new Color(0, 0, 0, .8f));
             g.fillRect(panel.X, panel.Y + 50, panel.W, panel.H - 50);
             //album artwork
-            Image image = Music.listSongs[Music.indexPlaying].getAlbumArtwork(panel.W - 20 * 2);
+            Image image = Music.currentlyPlaying.getAlbumArtwork(panel.W - 20 * 2);
             CustomGraphics.DrawImage(image, 20 + g.getTranslateX(), 60 + g.getTranslateY());
             //arrow
             getDownArrow(out int downArrowX, out int downArrowY);
@@ -349,8 +367,8 @@ namespace MusicPlayer
                 //richText = true
             };
             style.normal.textColor = Color.white;
-            string caption = Music.listSongs[Music.indexPlaying].file.Tag.Title;
-            string description = string.Join(", ", Music.listSongs[Music.indexPlaying].file.Tag.Performers);
+            string caption = Music.currentlyPlaying.file.Tag.Title;
+            string description = string.Join(", ", Music.currentlyPlaying.file.Tag.Performers);
             g.setClip(10, 215, panel.W - 10 * 2, 50);
             caption = Utilities.TrimUntilFit(caption, style, panel.W - 10 * 2);
             g.drawString(caption, panel.W / 2 - GameCanvas.w / 2, 215, style);
@@ -360,7 +378,6 @@ namespace MusicPlayer
             description = Utilities.TrimUntilFit(description, style, panel.W - 15 * 2);
             g.drawString(description, panel.W / 2 - GameCanvas.w / 2, 230, style);
             //controls (prev, pause, next)
-
             getControlButtons(out int playPauseX, out int playPauseY, out int prevX, out int prevY, out int nextX, out int nextY);
             if (Music.state == PlaybackState.Playing)
                 g.drawImage(pause, playPauseX, playPauseY);
@@ -384,9 +401,13 @@ namespace MusicPlayer
             g.setColor(new Color(.6f, .6f, .6f, .5f));
             g.fillRect(progBarX, progBarY, progBarW, progBarH);
             g.setColor(Color.white);
-            TimeSpan currentPosition = Music.listSongs[Music.indexPlaying].Position;
-            TimeSpan duration = Music.listSongs[Music.indexPlaying].file.Properties.Duration;
+            TimeSpan currentPosition = Music.currentlyPlaying.Position;
+            TimeSpan duration = Music.currentlyPlaying.Length;
             int width = (int)(progBarW * currentPosition.Ticks / duration.Ticks);
+            if (GameCanvas.isPointerHoldIn(0, progBarY - 2, panel.W, progBarH + 4))
+            {
+                width = Mathf.Clamp(GameCanvas.pxMouse - progBarX, 0, progBarW);
+            }
             g.fillRect(progBarX, progBarY, width, 1);
             CustomGraphics.DrawImage(whiteDot, (progBarX + width) * mGraphics.zoomLevel - whiteDot.w / 2 + g.getTranslateX(), (progBarY + .5f) * mGraphics.zoomLevel - whiteDot.h / 2 + g.getTranslateY(), 0, false);
             GUIStyle style = new GUIStyle(GUI.skin.label)
