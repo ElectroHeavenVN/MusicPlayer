@@ -18,8 +18,6 @@ namespace MusicPlayer
     internal class MusicPlayerMain
     {
         static readonly int OFFSET_CURRENTLY_PLAYING = GameCanvas.panel.H + 20;
-        public static Image downArrow;
-        public static Image whiteDot;
         static int offsetTitle;
         static int offsetDesc;
         static long lastTimeResetTitle;
@@ -32,35 +30,22 @@ namespace MusicPlayer
 
         static int offsetCurrentlyPlayingPanel = OFFSET_CURRENTLY_PLAYING;
         //static float angle;
+        public static Image downArrow = new Image();
+        public static Image whiteDot = new Image();
+        public static Image previous = new Image();
+        public static Image play = new Image();
+        public static Image pause = new Image();
+        public static Image next = new Image();
 
         static MusicPlayerMain()
         {
-            Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("MusicPlayer.Resources.Down_arrow.png");
-            byte[] data = new byte[stream.Length];
-            stream.Read(data, 0, (int)stream.Length);
-            downArrow = new Image();
-            downArrow.texture.LoadImage(data);
-            downArrow.texture = TextureScaler.ScaleTexture(downArrow.texture, 8 * mGraphics.zoomLevel, 8 * mGraphics.zoomLevel);
-            downArrow.texture.anisoLevel = 0;
-            downArrow.texture.filterMode = FilterMode.Point;
-            downArrow.texture.mipMapBias = 0f;
-            downArrow.texture.wrapMode = TextureWrapMode.Clamp;
-            downArrow.texture.Apply();
-            downArrow.w = downArrow.texture.width;
-            downArrow.h = downArrow.texture.height;
-            stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("MusicPlayer.Resources.White_dot.png");
-            data = new byte[stream.Length];
-            stream.Read(data, 0, (int)stream.Length);
-            whiteDot = new Image();
-            whiteDot.texture.LoadImage(data);
-            whiteDot.texture = TextureScaler.ScaleTexture(whiteDot.texture, 5 * mGraphics.zoomLevel, 5 * mGraphics.zoomLevel);
-            whiteDot.texture.anisoLevel = 0;
-            whiteDot.texture.filterMode = FilterMode.Point;
-            whiteDot.texture.mipMapBias = 0f;
-            whiteDot.texture.wrapMode = TextureWrapMode.Clamp;
-            whiteDot.texture.Apply();
-            whiteDot.w = whiteDot.texture.width;
-            whiteDot.h = whiteDot.texture.height;
+            Utils.InitializeImage(downArrow, "Down_arrow.png", 8 * mGraphics.zoomLevel, 8 * mGraphics.zoomLevel);
+            Utils.InitializeImage(whiteDot, "White_dot.png", 5 * mGraphics.zoomLevel, 5 * mGraphics.zoomLevel);
+
+            Utils.InitializeImage(previous, "Previous.png", 12 * mGraphics.zoomLevel, 12 * mGraphics.zoomLevel);
+            Utils.InitializeImage(play, "Play.png", 25 * mGraphics.zoomLevel, 25 * mGraphics.zoomLevel);
+            Utils.InitializeImage(pause, "Pause.png", 25 * mGraphics.zoomLevel, 25 * mGraphics.zoomLevel);
+            Utils.InitializeImage(next, "Next.png", 12 * mGraphics.zoomLevel, 12 * mGraphics.zoomLevel);
         }
 
         public static void OpenMusicPanel()
@@ -189,7 +174,8 @@ namespace MusicPlayer
             {
                 Panel panel = GameCanvas.panel;
                 getDownArrow(out int downArrowX, out int downArrowY);
-                if (GameCanvas.isPointerHoldIn(downArrowX, downArrowY, downArrow.w, downArrow.h))
+                getControlButtons(out int playPauseX, out int playPauseY, out int prevX, out int prevY, out int nextX, out int nextY);
+                if (GameCanvas.isPointerHoldIn(downArrowX, downArrowY, downArrow.w / mGraphics.zoomLevel, downArrow.h / mGraphics.zoomLevel))
                 {
                     GameCanvas.isPointerJustDown = false;
                     GameScr.gI().isPointerDowning = false;
@@ -209,7 +195,40 @@ namespace MusicPlayer
                     GameCanvas.clearAllPointerEvent();
                     return;
                 }
-                if (GameCanvas.isPointer(panel.startTabPos - 2, 52, panel.W, 25) || GameCanvas.isPointerHoldIn(panel.xScroll, panel.yScroll, panel.wScroll, panel.hScroll))
+                else if (GameCanvas.isPointerHoldIn(prevX, prevY, previous.w / mGraphics.zoomLevel, previous.h / mGraphics.zoomLevel))
+                {
+                    GameCanvas.isPointerJustDown = false;
+                    GameScr.gI().isPointerDowning = false;
+                    if (GameCanvas.isPointerClick)
+                    {
+                        Music.Previous();
+                    }
+                    GameCanvas.clearAllPointerEvent();
+                    return;
+                }
+                else if (GameCanvas.isPointerHoldIn(playPauseX, playPauseY, play.w / mGraphics.zoomLevel, play.h / mGraphics.zoomLevel))
+                {
+                    GameCanvas.isPointerJustDown = false;
+                    GameScr.gI().isPointerDowning = false;
+                    if (GameCanvas.isPointerClick)
+                    {
+                        Music.PauseOrPlay();
+                    }
+                    GameCanvas.clearAllPointerEvent();
+                    return;
+                }
+                else if (GameCanvas.isPointerHoldIn(nextX, nextY, next.w / mGraphics.zoomLevel, next.h / mGraphics.zoomLevel))
+                {
+                    GameCanvas.isPointerJustDown = false;
+                    GameScr.gI().isPointerDowning = false;
+                    if (GameCanvas.isPointerClick)
+                    {
+                        Music.Next();
+                    }
+                    GameCanvas.clearAllPointerEvent();
+                    return;
+                }
+                else if (GameCanvas.isPointer(panel.startTabPos - 2, 52, panel.W, 25) || GameCanvas.isPointerHoldIn(panel.xScroll, panel.yScroll, panel.wScroll, panel.hScroll))
                 {
                     //chặn chuyển tab
                     GameCanvas.isPointerJustDown = false;
@@ -314,7 +333,7 @@ namespace MusicPlayer
             g.setColor(new Color(0, 0, 0, .8f));
             g.fillRect(panel.X, panel.Y + 50, panel.W, panel.H - 50);
             //album artwork
-            Image image = Music.listSongs[Music.indexPlaying].getAlbumArtwork(panel.W - 40);
+            Image image = Music.listSongs[Music.indexPlaying].getAlbumArtwork(panel.W - 20 * 2);
             CustomGraphics.DrawImage(image, 20 + g.getTranslateX(), 60 + g.getTranslateY());
             //arrow
             getDownArrow(out int downArrowX, out int downArrowY);
@@ -333,17 +352,30 @@ namespace MusicPlayer
             string caption = Music.listSongs[Music.indexPlaying].file.Tag.Title;
             string description = string.Join(", ", Music.listSongs[Music.indexPlaying].file.Tag.Performers);
             g.setClip(10, 215, panel.W - 10 * 2, 50);
-            caption = Utils.TrimUntilFit(caption, style, panel.W - 10 * 2);
+            caption = Utilities.TrimUntilFit(caption, style, panel.W - 10 * 2);
             g.drawString(caption, panel.W / 2 - GameCanvas.w / 2, 215, style);
             style.fontSize -= mGraphics.zoomLevel * 4;
             style.normal.textColor = new Color(.6f, .6f, .6f);
             g.setClip(15, 230, panel.W - 15 * 2, 50);
-            description = Utils.TrimUntilFit(description, style, panel.W - 15 * 2);
+            description = Utilities.TrimUntilFit(description, style, panel.W - 15 * 2);
             g.drawString(description, panel.W / 2 - GameCanvas.w / 2, 230, style);
             //controls (prev, pause, next)
 
-            g.setClip(panel.X, panel.Y, panel.W - 1, panel.H);
+            getControlButtons(out int playPauseX, out int playPauseY, out int prevX, out int prevY, out int nextX, out int nextY);
+            if (Music.state == PlaybackState.Playing)
+                g.drawImage(pause, playPauseX, playPauseY);
+            else 
+                g.drawImage(play, playPauseX, playPauseY);
+            g.drawImage(previous, prevX, prevY);
+            g.drawImage(next, nextX, nextY);
+            //if (Music.state == PlaybackState.Playing)
+            //    g.drawImage(pause, playPauseX, playPauseY, mGraphics.TOP | mGraphics.HCENTER);
+            //else 
+            //    g.drawImage(play, playPauseX, playPauseY, mGraphics.TOP | mGraphics.HCENTER);
+            //g.drawImage(previous, prevX, prevY, mGraphics.TOP | mGraphics.HCENTER);
+            //g.drawImage(next, nextX, nextY, mGraphics.TOP | mGraphics.HCENTER);
 
+            g.setClip(panel.X, panel.Y, panel.W - 1, panel.H);
         }
 
         static void PaintProgressBar(mGraphics g, Panel panel)
@@ -352,7 +384,7 @@ namespace MusicPlayer
             g.setColor(new Color(.6f, .6f, .6f, .5f));
             g.fillRect(progBarX, progBarY, progBarW, progBarH);
             g.setColor(Color.white);
-            TimeSpan currentPosition = Music.listSongs[Music.indexPlaying].GetPosition();
+            TimeSpan currentPosition = Music.listSongs[Music.indexPlaying].Position;
             TimeSpan duration = Music.listSongs[Music.indexPlaying].file.Properties.Duration;
             int width = (int)(progBarW * currentPosition.Ticks / duration.Ticks);
             g.fillRect(progBarX, progBarY, width, 1);
@@ -411,7 +443,7 @@ namespace MusicPlayer
                 g.fillRect(x, y, width, height);
                 style.normal.textColor = new Color(0f, 0.33f, 0.15f);
                 if (i != panel.selected)
-                    caption = Utils.TrimUntilFit(caption, style, width);
+                    caption = Utilities.TrimUntilFit(caption, style, width);
                 if (i == panel.selected && captionWidth > width)
                 {
                     g.drawString(caption, x + 4 - offsetTitle, y, style);
@@ -423,7 +455,7 @@ namespace MusicPlayer
                 style.normal.textColor = new Color(0f, 0.5f, 1f);
                 style.fontSize = 7 * mGraphics.zoomLevel;
                 if (i != panel.selected)
-                    description = Utils.TrimUntilFit(description, style, width);
+                    description = Utilities.TrimUntilFit(description, style, width);
                 if (i == panel.selected && descriptionWidth > width)
                 {
                     g.drawString(description, x + 4 - offsetDesc, y + 12, style);
@@ -512,6 +544,16 @@ namespace MusicPlayer
             progBarY = 205;
             progBarW = GameCanvas.panel.W - progBarX * 2;
             progBarH = 1;
+        }
+
+        static void getControlButtons(out int playPauseX, out int playPauseY, out int prevX, out int prevY, out int nextX, out int nextY) 
+        { 
+            Panel panel = GameCanvas.panel;
+            playPauseX = panel.W / 2 - play.w / 4;
+            prevX = playPauseX - play.w * 2 / 3 + previous.w / 4;
+            nextX = playPauseX + play.w * 2 / 3 + next.w / 4;
+            playPauseY = panel.Y + 245;
+            prevY = nextY = playPauseY + play.h / 8;
         }
 
         //static void Test()

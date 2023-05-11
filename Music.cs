@@ -1,4 +1,5 @@
-﻿using NAudio.Utils;
+﻿using Mod.Graphics;
+using NAudio.Utils;
 using NAudio.Wave;
 using System;
 using System.Collections.Generic;
@@ -29,13 +30,15 @@ namespace MusicPlayer
 
         internal static int indexPlaying = -1;
 
+        internal static List<string> musicPaths = new List<string>();
+
         static bool m_lockEvents;
 
         internal TagLib.File file;
 
         internal Music(string path)
         {
-            if (Path.GetExtension(path).ToLower() != ".wav" && Path.GetExtension(path).ToLower() !=  ".mp3" && Path.GetExtension(path).ToLower() !=  ".aiff" && Path.GetExtension(path).ToLower() !=  ".aif")
+            if (Path.GetExtension(path).ToLower() != ".wav" && Path.GetExtension(path).ToLower() != ".mp3" && Path.GetExtension(path).ToLower() != ".aiff" && Path.GetExtension(path).ToLower() != ".aif")
                 throw new Exception("Invalid file type: " + Path.GetExtension(path));
             filePath = path;
             file = TagLib.File.Create(filePath);
@@ -52,7 +55,12 @@ namespace MusicPlayer
         private static void Output_PlaybackStopped(object sender, StoppedEventArgs e)
         {
             if (!m_lockEvents)
-                Play(++indexPlaying);
+            {
+                ++indexPlaying;
+                if (indexPlaying > listSongs.Count - 1)
+                    indexPlaying = 0;   //loop
+                Play(indexPlaying);
+            }
         }
 
         internal static void Play(int index)
@@ -68,11 +76,48 @@ namespace MusicPlayer
                 m_lockEvents = true;
                 output.Stop();
             }
-            musicStream = new AudioFileReader(filePath);
-            output.Init(musicStream);
+            Init();
             output.Play();
             m_lockEvents = false;
         }
+
+        internal static void StopBeforeExit()
+        {
+            m_lockEvents = true;
+            output.Stop();
+        }
+
+        internal void Init()
+        {
+            musicStream = new AudioFileReader(filePath);
+            output.Init(musicStream);
+        }
+
+        internal static void PauseOrPlay()
+        {
+            if (output.PlaybackState == PlaybackState.Playing)
+                output.Pause();
+            else
+                output.Play();
+        }
+
+        internal static void Next()
+        {
+            indexPlaying++;
+            if (indexPlaying > listSongs.Count - 1)
+                indexPlaying = 0;   //loop
+            Play(indexPlaying);
+        }
+
+        internal static void Previous()
+        {
+            indexPlaying--;
+            if (indexPlaying < 0)
+                indexPlaying = listSongs.Count - 1;   //loop
+            Play(indexPlaying);
+        }
+
+        internal static PlaybackState state => output.PlaybackState;
 
         internal void SetVolume(float volume) => output.Volume = volume;
 
@@ -85,7 +130,7 @@ namespace MusicPlayer
                     if (albumArtwork.w == size && albumArtwork.h == size)
                         return albumArtwork;
                 }
-            else 
+            else
                 foreach (Image albumArtwork in albumArtworks)
                 {
                     if (albumArtwork.w == size && albumArtwork.h == size)
@@ -94,13 +139,13 @@ namespace MusicPlayer
             Image image = new Image();
             if (file.Tag.Pictures.Length == 0)
                 image.texture.LoadImage(defaultAlbumArtworkImage);
-            else 
+            else
                 image.texture.LoadImage(file.Tag.Pictures[0].Data.Data);
-            image.texture = Utils.CropToSquare(image.texture, size);
+            image.texture = CustomGraphics.CropToSquare(image.texture, size);
             //if (isCropToCircle)
             //    image.texture = Utils.CropFromSquareToCircle(image.texture, mGraphics.zoomLevel);
             if (roundCorner)
-                image.texture = Utils.RoundCorner(image.texture, 10 * mGraphics.zoomLevel);
+                image.texture = CustomGraphics.RoundCorner(image.texture, 10 * mGraphics.zoomLevel);
             image.texture.anisoLevel = 0;
             image.texture.filterMode = FilterMode.Point;
             image.texture.mipMapBias = 0f;
@@ -115,6 +160,10 @@ namespace MusicPlayer
             return image;
         }
 
-        internal TimeSpan GetPosition() => output.GetPositionTimeSpan();
+        internal TimeSpan Position
+        { 
+            get => musicStream.CurrentTime;
+            set => musicStream.CurrentTime = value;
+        }
     }
 }

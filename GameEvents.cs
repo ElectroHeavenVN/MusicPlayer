@@ -37,23 +37,14 @@ internal class GameEvents : Extension
 
     public override void onGameStarted()
     {
-        new Thread(() =>
-        {
-            FileInfo[] files = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)).GetFiles();
-            files = files.OrderBy(f => -f.LastWriteTime.Ticks).ToArray();
-            foreach (FileInfo item in files)
-            {
-                try
-                {
-                    Music.listSongs.Add(new Music(item.FullName));
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogException(ex);
-                }
-            }
-        })
-        { IsBackground = true }.Start();
+        Data.Load();
+    }
+
+    public override bool onGameClosing()
+    {
+        Data.Save();
+        Music.StopBeforeExit();
+        return false;
     }
 
     private void Test(mGraphics g)

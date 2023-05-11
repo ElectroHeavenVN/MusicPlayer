@@ -60,6 +60,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Data.cs" />
     <Compile Include="GameEvents.cs" />
     <Compile Include="Loader.cs" />
     <Compile Include="MainExt.cs" />
@@ -79,6 +80,12 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\White_dot.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Next.png" />
+    <EmbeddedResource Include="Resources\Play.png" />
+    <EmbeddedResource Include="Resources\Previous.png" />
+    <EmbeddedResource Include="Resources\Pause.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
