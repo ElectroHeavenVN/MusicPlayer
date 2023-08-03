@@ -1,4 +1,5 @@
-﻿using Mod.Graphics;
+﻿using LitJSON;
+using Mod.Graphics;
 using NAudio.Utils;
 using NAudio.Wave;
 using System;
@@ -12,31 +13,33 @@ using UnityEngine;
 
 namespace MusicPlayer
 {
-    internal class Music
+    public class Song
     {
-        static WaveStream musicStream;
+        public string filePath;
 
-        static WaveOutEvent output = new WaveOutEvent();
-
-        internal string filePath;
-
+        [JsonSkip]
         List<Image> albumArtworks = new List<Image>();
 
+        [JsonSkip]
         static List<Image> defaultAlbumArtworks = new List<Image>();
 
+        [JsonSkip]
         static byte[] defaultAlbumArtworkImage;
 
-        internal static List<Music> listSongs = new List<Music>();
-
-        internal static int indexPlaying = -1;
-
-        internal static List<string> musicPaths = new List<string>();
-
-        static bool m_lockEvents;
-
+        [JsonSkip]
         internal TagLib.File file;
 
-        internal Music(string path)
+        [JsonSkip]
+        internal TimeSpan Duration => file.Properties.Duration;
+
+        internal Song()
+        {
+            if (Path.GetExtension(filePath).ToLower() != ".wav" && Path.GetExtension(filePath).ToLower() != ".mp3" && Path.GetExtension(filePath).ToLower() != ".aiff" && Path.GetExtension(filePath).ToLower() != ".aif")
+                throw new Exception("Invalid file type: " + Path.GetExtension(filePath));
+            file = TagLib.File.Create(filePath);
+        }
+
+        internal Song(string path)
         {
             if (Path.GetExtension(path).ToLower() != ".wav" && Path.GetExtension(path).ToLower() != ".mp3" && Path.GetExtension(path).ToLower() != ".aiff" && Path.GetExtension(path).ToLower() != ".aif")
                 throw new Exception("Invalid file type: " + Path.GetExtension(path));
@@ -44,84 +47,12 @@ namespace MusicPlayer
             file = TagLib.File.Create(filePath);
         }
 
-        static Music()
+        static Song()
         {
             Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("MusicPlayer.Resources.Default_album_artwork.png");
             defaultAlbumArtworkImage = new byte[stream.Length];
             stream.Read(defaultAlbumArtworkImage, 0, (int)stream.Length);
-            output.PlaybackStopped += Output_PlaybackStopped;
         }
-
-        private static void Output_PlaybackStopped(object sender, StoppedEventArgs e)
-        {
-            if (!m_lockEvents)
-            {
-                ++indexPlaying;
-                if (indexPlaying > listSongs.Count - 1)
-                    indexPlaying = 0;   //loop
-                Play(indexPlaying);
-            }
-        }
-
-        internal static void Play(int index)
-        {
-            indexPlaying = index;
-            listSongs[index].Play();
-        }
-
-        void Play()
-        {
-            if (output.PlaybackState != PlaybackState.Stopped)
-            {
-                m_lockEvents = true;
-                output.Stop();
-            }
-            Init();
-            output.Play();
-            m_lockEvents = false;
-        }
-
-        internal static void StopBeforeExit()
-        {
-            m_lockEvents = true;
-            output.Stop();
-        }
-
-        internal void Init()
-        {
-            musicStream = new AudioFileReader(filePath);
-            output.Init(musicStream);
-        }
-
-        internal static void PauseOrPlay()
-        {
-            if (output.PlaybackState == PlaybackState.Playing)
-                output.Pause();
-            else
-                output.Play();
-        }
-
-        internal static void Next()
-        {
-            indexPlaying++;
-            if (indexPlaying > listSongs.Count - 1)
-                indexPlaying = 0;   //loop
-            Play(indexPlaying);
-        }
-
-        internal static void Previous()
-        {
-            indexPlaying--;
-            if (indexPlaying < 0)
-                indexPlaying = listSongs.Count - 1;   //loop
-            Play(indexPlaying);
-        }
-
-        internal static Music currentlyPlaying => listSongs[indexPlaying];
-
-        internal static PlaybackState state => output.PlaybackState;
-
-        internal void SetVolume(float volume) => output.Volume = volume;
 
         internal Image getAlbumArtwork(int size = 150/*, bool isCropToCircle = true*/, bool roundCorner = true)
         {
@@ -161,13 +92,5 @@ namespace MusicPlayer
                 albumArtworks.Add(image);
             return image;
         }
-
-        internal TimeSpan Position
-        { 
-            get => musicStream.CurrentTime;
-            set => musicStream.CurrentTime = value;
-        }
-
-        internal TimeSpan Length => file.Properties.Duration;
     }
 }

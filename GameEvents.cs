@@ -43,7 +43,7 @@ internal class GameEvents : Extension
     public override bool onGameClosing()
     {
         Data.Save();
-        Music.StopBeforeExit();
+        PlayerCore.StopBeforeExit();
         return false;
     }
 

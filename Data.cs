@@ -1,4 +1,5 @@
-﻿using Mod;
+﻿using LitJson;
+using Mod;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -13,57 +14,76 @@ namespace MusicPlayer
     {
         internal static void Save()
         {
-            Utilities.saveRMSInt("indexPlay", Music.indexPlaying);
-            Utilities.saveRMSString("musicPaths", string.Join(Environment.NewLine, Music.musicPaths.ToArray()));
-            Utilities.saveRMSString("time", Music.listSongs[Music.indexPlaying].Position.Ticks.ToString());
+            //Utilities.saveRMSInt("indexPlay", Music.indexPlaying);
+            //Utilities.saveRMSString("musicPaths", string.Join(Environment.NewLine, Playlist.musicPaths.ToArray()));
+            //Utilities.saveRMSString("time", Music.currentlyPlaying.Position.Ticks.ToString());
+
+            try
+            {
+                Utilities.saveRMSString("defaultPlaylist", JsonMapper.ToJson(PlayerCore.defaultPlaylist));
+                Utilities.saveRMSString("favorite", JsonMapper.ToJson(PlayerCore.favorite));
+                Utilities.saveRMSString("userPlaylists", JsonMapper.ToJson(PlayerCore.userPlaylists));
+            }
+            catch (Exception ex) { Debug.LogException(ex); }
         }
 
         internal static void Load()
         {
-            try
-            {
-                Music.musicPaths = Utilities.loadRMSString("musicPaths").Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Where(p => Directory.Exists(p)).ToList();
-            }
+            try{ PlayerCore.defaultPlaylist = JsonMapper.ToObject<Playlist>(Utilities.loadRMSString("defaultPlaylist")); }
             catch (Exception) { }
-            if (Music.musicPaths.Count == 0)
-                Music.musicPaths.Add(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic));
-            new Thread(() =>
+            try { PlayerCore.favorite = JsonMapper.ToObject<Playlist>(Utilities.loadRMSString("favorite")); }
+            catch (Exception) { }
+            try { PlayerCore.userPlaylists = JsonMapper.ToObject<List<Playlist>>(Utilities.loadRMSString("userPlaylists")); }
+            catch (Exception) { }
+            if (PlayerCore.musicPaths.Count == 0)
             {
+                PlayerCore.musicPaths.Add(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic));
                 List<FileInfo> files = new List<FileInfo>();
-                foreach (string path in Music.musicPaths)
+                foreach (string path in PlayerCore.musicPaths)
                 {
-                   files.AddRange(new DirectoryInfo(path).GetFiles());
+                    files.AddRange(new DirectoryInfo(path).GetFiles());
                 }
                 files.Sort((f1, f2) => -f1.LastWriteTime.Ticks.CompareTo(f2.LastWriteTime.Ticks));  //sort by date
                 foreach (FileInfo item in files)
                 {
                     try
                     {
-                        Music.listSongs.Add(new Music(item.FullName));
+                        PlayerCore.defaultPlaylist.songs.Add(new Song(item.FullName));
                     }
                     catch (Exception) { }
                 }
-                try
-                {
-                    Music.indexPlaying = Utilities.loadRMSInt("indexPlay");
-                    if (Music.indexPlaying > Music.listSongs.Count - 1)
-                        Music.indexPlaying = -1;
-                    else
-                    {
-                        try
-                        {
-                            Music.listSongs[Music.indexPlaying].Init();
-                            Music.listSongs[Music.indexPlaying].Position = TimeSpan.FromTicks(long.Parse(Utilities.loadRMSString("time")));
-                        }
-                        catch (Exception) { }
-                    }
-                }
-                catch (Exception)
-                {
-                    Music.indexPlaying = -1;
-                }
+            }
+            new Thread(() =>
+            {
+                LoadPlaylist(PlayerCore.defaultPlaylist);
+                LoadPlaylist(PlayerCore.favorite);
+                foreach (Playlist userPlaylist in PlayerCore.userPlaylists)
+                    LoadPlaylist(userPlaylist);
             })
             { IsBackground = true }.Start();
+        }
+
+        static void LoadPlaylist(Playlist playlist)
+        {
+            try
+            {
+                if (playlist.indexPlaying > playlist.songs.Count - 1)
+                    playlist.indexPlaying = -1;
+                else
+                {
+                    try
+                    {
+                        TimeSpan position = playlist.currentPosition;
+                        if (position >= playlist.currentlyPlaying.Duration)
+                            playlist.currentPosition = TimeSpan.Zero;
+                    }
+                    catch (Exception) { }
+                }
+            }
+            catch (Exception)
+            {
+                playlist.indexPlaying = -1;
+            }
         }
     }
 }
